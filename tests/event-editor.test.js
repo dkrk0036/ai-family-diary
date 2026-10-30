@@ -95,4 +95,16 @@ check('deleting one legacy event does not remove another with the same id',()=>{
   const h=harness(true,initial);h.clickEvent();h.node('#panelDelete').onclick();
   assert.equal(h.events().length,1);assert.equal(h.events()[0].title,'남길 일정');
 });
+check('evening appointment shows only the stored start time, not an invented end time',()=>{
+  const now=new Date(),today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+  const initial=[{id:11,date:today,time:'18:30',title:'저녁 약속',cat:'me'}];
+  const h=harness(true,initial);h.clickEvent();
+  assert.equal(h.node('#pTime').textContent,'18:30');
+});
+check('untimed evening appointment remains marked as time unspecified',()=>{
+  const now=new Date(),today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+  const initial=[{id:11,date:today,time:'',title:'저녁 약속',cat:'me'}];
+  const h=harness(true,initial);h.clickEvent();
+  assert.equal(h.node('#pTime').textContent,'시간 미정');
+});
 console.log('Event editor regression checks:',checks);
