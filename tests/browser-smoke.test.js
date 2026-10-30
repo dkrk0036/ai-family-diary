@@ -98,6 +98,11 @@ async function run(){
     await mobile.screenshot({path:path.join(root,'screenshots','mobile.png'),fullPage:true});
     await mobile.reload();
     assert.equal(await count(mobile),1);
+    // Reload opens the current month, so navigate back to the saved 2028 event.
+    for(let i=0;i<36 && await mobile.locator('#monthTitle').textContent()!=='2028년 3월';i++){
+      await mobile.locator('#next').click();
+    }
+    assert.equal(await mobile.locator('#monthTitle').textContent(),'2028년 3월');
     await mobile.locator('#grid .event').first().click();
     assert.equal(await firstCheck.isChecked(),true);
     assert.deepEqual(mobileErrors,[]);
