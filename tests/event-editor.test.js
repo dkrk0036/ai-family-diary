@@ -126,4 +126,24 @@ check('quick add changes selection so deleting affects only the new event',()=>{
   assert.equal(h.events().length,1);
   assert.equal(h.events()[0].title,'기존 일정');
 });
+check('copy immediately selects the copied event for editing',()=>{
+  const h=harness();h.clickEvent();
+  h.node('#panelCopy').onclick();
+  assert.equal(h.events().length,2);
+  assert.equal(h.node('#pTitle').textContent,'기존 일정 (복사) ♥');
+  h.node('#panelEdit').onclick();
+  assert.equal(h.node('#dtitle').value,'기존 일정 (복사)');
+  h.node('#dtitle').value='복사본 수정';
+  h.node('#save').onclick();
+  assert.equal(h.events()[0].title,'기존 일정');
+  assert.equal(h.events()[1].title,'복사본 수정');
+});
+check('deleting the selected copy preserves its original',()=>{
+  const h=harness();h.clickEvent();
+  h.node('#panelCopy').onclick();
+  h.node('#panelDelete').onclick();
+  assert.equal(h.events().length,1);
+  assert.equal(h.events()[0].title,'기존 일정');
+  assert.equal(h.node('#pTitle').textContent,'일정을 선택해 주세요');
+});
 console.log('Event editor regression checks:',checks);
