@@ -146,4 +146,14 @@ check('deleting the selected copy preserves its original',()=>{
   assert.equal(h.events()[0].title,'기존 일정');
   assert.equal(h.node('#pTitle').textContent,'일정을 선택해 주세요');
 });
+check('copying from the edit dialog closes stale fields and selects the copy',()=>{
+  const h=harness();h.clickEvent();h.node('#panelEdit').onclick();
+  assert.equal(h.dialog.open,true);
+  h.node('#copy').onclick();
+  assert.equal(h.dialog.open,false);
+  assert.equal(h.events().length,2);
+  assert.equal(h.node('#pTitle').textContent,'기존 일정 (복사) ♥');
+  h.node('#panelEdit').onclick();
+  assert.equal(h.node('#dtitle').value,'기존 일정 (복사)');
+});
 console.log('Event editor regression checks:',checks);
