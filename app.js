@@ -37,8 +37,8 @@ const pad=n=>String(n).padStart(2,'0'),iso=(y,m,d)=>y+'-'+pad(m+1)+'-'+pad(d),na
   }
   const cat=/어린이집|보육|행사일지|관찰일지/.test(s)?'work':/아이|첫째|둘째|학교|학원|치과|정형외과/.test(s)?'kid':/배우자|남편|아내|가족|시댁|친정|장례/.test(s)?'spouse':'me';
   let title=s;
-  if(dateToken)title=title.replace(dateToken,' ');
-  if(tm)title=title.replace(tm[0],' ');
+  if(dateToken)title=title.replace(dateToken+'에',' ').replace(dateToken,' ');
+  if(tm)title=title.replace(tm[0]+'에',' ').replace(tm[0],' ');
   title=title.replace(/\s+/g,' ').trim();
   if(!title)return {error:'일정 내용을 함께 입력해 주세요.'};
   return {date:iso(y,m,d),time,cat,title};
