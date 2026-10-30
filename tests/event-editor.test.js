@@ -5,11 +5,11 @@ const path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
 let checks=0;
 function check(label,fn){fn();checks++;console.log('PASS',label)}
-function harness(confirmDelete=true){
+function harness(confirmDelete=true,initialOverride=null,fixedNow=null){
   const now=new Date();
   const today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
   const initial=[{id:11,date:today,time:'08:00',title:'기존 일정',cat:'me',place:'',memo:'',checklist:[true,false,false]}];
-  const data=new Map([['afd-events-v3',JSON.stringify(initial)]]);
+  const data=new Map([['afd-events-v3',JSON.stringify(initialOverride||initial)]]);
   const alerts=[];
   const localStorage={getItem:key=>data.get(key)||null,setItem:(key,val)=>data.set(key,val)};
   const grid={children:[],set innerHTML(v){if(v==='')this.children=[]},appendChild(x){this.children.push(x)}};
@@ -19,7 +19,7 @@ function harness(confirmDelete=true){
   const boxes=Array.from({length:3},()=>({checked:false,addEventListener(name,cb){this.onchange=cb}}));
   function node(sel){
     if(sel==='#grid')return grid;
-    if(sel==='#detail')return dialog;
+    if(sel==='#detail'||sel==='#aiDialog')return dialog;
     if(sel==='.detailPanel')return panel;
     if(!nodes.has(sel))nodes.set(sel,{value:'',textContent:'',onclick:null,classList:{add(){},remove(){}}});
     return nodes.get(sel);
@@ -29,7 +29,8 @@ function harness(confirmDelete=true){
     querySelectorAll:()=>boxes,
     createElement:()=>({children:[],className:'',textContent:'',onclick:null,appendChild(x){this.children.push(x)},set innerHTML(v){this._html=v}})
   };
-  const context={document,localStorage,Date,console,innerWidth:500,alert:s=>alerts.push(s),confirm:()=>confirmDelete};
+  const Clock=fixedNow===null?Date:class extends Date{static now(){return fixedNow}};
+  const context={document,localStorage,Date:Clock,console,innerWidth:500,alert:s=>alerts.push(s),confirm:()=>confirmDelete};
   vm.runInNewContext(source,context,{filename:'app.js'});
   function events(){return JSON.parse(data.get('afd-events-v3'))}
   function clickEvent(){const btn=grid.children.flatMap(x=>x.children).find(x=>x.className.startsWith('event'));assert.ok(btn,'calendar event button exists');btn.onclick()}
@@ -68,5 +69,30 @@ check('deletion clears detail fields and checkboxes',()=>{
 });
 check('cancelled deletion retains event',()=>{
   const h=harness(false);h.clickEvent();h.node('#panelDelete').onclick();assert.equal(h.events().length,1);
+});
+check('two quick additions in the same millisecond receive distinct ids',()=>{
+  const h=harness(true,null,555);
+  for(const title of ['회의','운동']){
+    h.node('#natural').value='내일 7시 '+title;
+    h.node('#quick').onsubmit({preventDefault(){}});
+  }
+  const ids=h.events().map(e=>e.id);
+  assert.equal(h.events().length,3);
+  assert.equal(new Set(ids).size,3);
+});
+check('copies created in the same millisecond have unique ids',()=>{
+  const h=harness(true,null,555);h.clickEvent();
+  h.node('#panelCopy').onclick();h.node('#panelCopy').onclick();
+  const ids=h.events().map(e=>e.id);
+  assert.equal(ids.length,3);assert.equal(new Set(ids).size,3);
+});
+check('deleting one legacy event does not remove another with the same id',()=>{
+  const now=new Date(),today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+  const initial=[
+    {id:11,date:today,time:'08:00',title:'삭제할 일정',cat:'me'},
+    {id:11,date:today,time:'09:00',title:'남길 일정',cat:'me'}
+  ];
+  const h=harness(true,initial);h.clickEvent();h.node('#panelDelete').onclick();
+  assert.equal(h.events().length,1);assert.equal(h.events()[0].title,'남길 일정');
 });
 console.log('Event editor regression checks:',checks);
