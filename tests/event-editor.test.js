@@ -1,0 +1,72 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const path=require('node:path');
+const source=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
+let checks=0;
+function check(label,fn){fn();checks++;console.log('PASS',label)}
+function harness(confirmDelete=true){
+  const now=new Date();
+  const today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+  const initial=[{id:11,date:today,time:'08:00',title:'기존 일정',cat:'me',place:'',memo:'',checklist:[true,false,false]}];
+  const data=new Map([['afd-events-v3',JSON.stringify(initial)]]);
+  const alerts=[];
+  const localStorage={getItem:key=>data.get(key)||null,setItem:(key,val)=>data.set(key,val)};
+  const grid={children:[],set innerHTML(v){if(v==='')this.children=[]},appendChild(x){this.children.push(x)}};
+  const nodes=new Map();
+  const panel={classList:{add(){},remove(){}}};
+  const dialog={open:false,showModal(){this.open=true},close(){this.open=false}};
+  const boxes=Array.from({length:3},()=>({checked:false,addEventListener(name,cb){this.onchange=cb}}));
+  function node(sel){
+    if(sel==='#grid')return grid;
+    if(sel==='#detail')return dialog;
+    if(sel==='.detailPanel')return panel;
+    if(!nodes.has(sel))nodes.set(sel,{value:'',textContent:'',onclick:null,classList:{add(){},remove(){}}});
+    return nodes.get(sel);
+  }
+  const document={
+    querySelector:node,
+    querySelectorAll:()=>boxes,
+    createElement:()=>({children:[],className:'',textContent:'',onclick:null,appendChild(x){this.children.push(x)},set innerHTML(v){this._html=v}})
+  };
+  const context={document,localStorage,Date,console,innerWidth:500,alert:s=>alerts.push(s),confirm:()=>confirmDelete};
+  vm.runInNewContext(source,context,{filename:'app.js'});
+  function events(){return JSON.parse(data.get('afd-events-v3'))}
+  function clickEvent(){const btn=grid.children.flatMap(x=>x.children).find(x=>x.className.startsWith('event'));assert.ok(btn,'calendar event button exists');btn.onclick()}
+  return {node,boxes,dialog,alerts,events,clickEvent,grid};
+}
+check('blank title is rejected without mutating stored event',()=>{
+  const h=harness();h.clickEvent();h.node('#panelEdit').onclick();h.node('#dtitle').value='   ';h.node('#save').onclick();
+  assert.equal(h.events()[0].title,'기존 일정');assert.equal(h.dialog.open,true);assert.equal(h.alerts.length,1);
+});
+check('impossible calendar date is rejected',()=>{
+  const h=harness();h.clickEvent();h.node('#panelEdit').onclick();h.node('#ddate').value='2026-02-30';h.node('#save').onclick();
+  assert.notEqual(h.events()[0].date,'2026-02-30');assert.equal(h.dialog.open,true);assert.equal(h.alerts.length,1);
+});
+check('invalid time is rejected without saving',()=>{
+  const h=harness();h.clickEvent();h.node('#panelEdit').onclick();h.node('#dtime').value='19:75';h.node('#save').onclick();
+  assert.equal(h.events()[0].time,'08:00');assert.equal(h.dialog.open,true);assert.equal(h.alerts.length,1);
+});
+check('valid edit persists and moves calendar to edited month',()=>{
+  const h=harness();h.clickEvent();h.node('#panelEdit').onclick();
+  h.node('#dtitle').value='  수정한 일정  ';h.node('#ddate').value='2028-02-29';h.node('#dtime').value='20:05';
+  h.node('#dplace').value='  도서관 ';h.node('#save').onclick();
+  const ev=h.events()[0];assert.equal(ev.title,'수정한 일정');assert.equal(ev.date,'2028-02-29');assert.equal(ev.time,'20:05');
+  assert.equal(ev.place,'도서관');assert.equal(h.node('#monthTitle').textContent,'2028년 2월');
+  assert.equal(h.dialog.open,false);assert.equal(h.node('#pTitle').textContent,'수정한 일정 ♥');
+});
+check('deletion clears detail fields and checkboxes',()=>{
+  const h=harness();h.clickEvent();assert.equal(h.boxes[0].checked,true);
+  h.node('#panelEdit').onclick();h.node('#delete').onclick();
+  assert.equal(h.events().length,0);assert.equal(h.dialog.open,false);
+  assert.equal(h.node('#pTitle').textContent,'일정을 선택해 주세요');
+  assert.equal(h.node('#pDate').textContent,'날짜 미정');
+  assert.equal(h.node('#pTime').textContent,'시간 미정');
+  assert.equal(h.node('#pCat').textContent,'-');
+  assert.equal(h.node('#pPlace').textContent,'-');
+  assert.equal(h.boxes.some(x=>x.checked),false);
+});
+check('cancelled deletion retains event',()=>{
+  const h=harness(false);h.clickEvent();h.node('#panelDelete').onclick();assert.equal(h.events().length,1);
+});
+console.log('Event editor regression checks:',checks);
