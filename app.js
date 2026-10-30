@@ -24,9 +24,9 @@ const pad=n=>String(n).padStart(2,'0'),iso=(y,m,d)=>y+'-'+pad(m+1)+'-'+pad(d),na
     return {error:'실제로 존재하는 날짜를 입력해 주세요.'};
   }
   let time='';
-  const tm=s.match(/(오전|오후|아침|저녁|밤|새벽)?\s*(\d+)시(?:\s*(반|(\d+)분))?/);
+  const tm=s.match(/(오전|오후|아침|저녁|밤|새벽)?\s*(\d+)시(?:\s*(반|(\d+)분|(\d+)(?=\s|$)))?/);
   if(tm){
-    const period=tm[1]||'',rawHour=+tm[2],mi=tm[3]==='반'?30:+(tm[4]||0);
+    const period=tm[1]||'',rawHour=+tm[2],mi=tm[3]==='반'?30:+(tm[4]||tm[5]||0);
     if(mi>59||rawHour>23||(period&&(rawHour<1||rawHour>12))){
       return {error:'시간은 올바른 시각과 0~59분으로 입력해 주세요.'};
     }
