@@ -1,0 +1,29 @@
+name: Desktop and mobile browser smoke tests
+on:
+  pull_request:
+  push:
+    branches:
+      - fix/event-editor-validation-20261031
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser runner
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Run real Chromium desktop and mobile checks
+        run: node tests/browser-smoke.test.js
+      - name: Upload browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diary-browser-screenshots
+          path: screenshots/
+          if-no-files-found: ignore
+          retention-days: 14
