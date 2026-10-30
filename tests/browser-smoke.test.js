@@ -89,6 +89,11 @@ async function run(){
     mobile.on('dialog',dialog=>dialog.accept());
     await mobile.locator('#panelDelete').click();
     assert.equal(await count(mobile),1);
+    console.log('MOBILE AFTER DELETE',JSON.stringify(await mobile.evaluate(()=>({
+      month:document.querySelector('#monthTitle').textContent,
+      rendered:[...document.querySelectorAll('#grid .event')].map(el=>el.textContent),
+      saved:JSON.parse(localStorage.getItem('afd-events-v3')||'[]').map(e=>({date:e.date,title:e.title,checklist:e.checklist}))
+    }))));
     await mobile.locator('#grid .event').filter({hasText:'아이 학교'}).first().click();
     assert.equal(await mobile.locator('#pTitle').textContent(),'아이 학교 ♥');
     assert.equal(await firstCheck.isChecked(),true);
