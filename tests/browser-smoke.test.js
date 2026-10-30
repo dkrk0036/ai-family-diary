@@ -71,11 +71,35 @@ async function run(){
     await mobile.locator('#dtime').fill('10:15');
     await mobile.locator('#save').click();
     assert.equal(await mobile.locator('#pTime').textContent(),'10:15');
+
+    // Touch-screen checklist and copy/delete flows must preserve the original.
+    const firstCheck=mobile.locator('.detailPanel .check input[type="checkbox"]').first();
+    await firstCheck.check();
+    assert.equal(await firstCheck.isChecked(),true);
+    assert.equal((await mobile.evaluate(()=>JSON.parse(localStorage.getItem('afd-events-v3'))))[0].checklist[0],true);
+    await mobile.locator('#panelCopy').click();
+    assert.equal(await count(mobile),2);
+    assert.equal(await mobile.locator('#pTitle').textContent(),'아이 학교 (복사) ♥');
+    assert.equal(await firstCheck.isChecked(),true);
+    await firstCheck.uncheck();
+    assert.equal(await firstCheck.isChecked(),false);
+    const savedPair=await mobile.evaluate(()=>JSON.parse(localStorage.getItem('afd-events-v3')));
+    assert.equal(savedPair[0].checklist[0],true);
+    assert.equal(savedPair[1].checklist[0],false);
+    mobile.on('dialog',dialog=>dialog.accept());
+    await mobile.locator('#panelDelete').click();
+    assert.equal(await count(mobile),1);
+    await mobile.locator('#grid .event').filter({hasText:'아이 학교'}).first().click();
+    assert.equal(await mobile.locator('#pTitle').textContent(),'아이 학교 ♥');
+    assert.equal(await firstCheck.isChecked(),true);
+
     await mobile.screenshot({path:path.join(root,'screenshots','mobile.png'),fullPage:true});
     await mobile.reload();
     assert.equal(await count(mobile),1);
+    await mobile.locator('#grid .event').filter({hasText:'아이 학교'}).first().click();
+    assert.equal(await firstCheck.isChecked(),true);
     assert.deepEqual(mobileErrors,[]);
-    console.log('PASS mobile: real browser add, edit, reload and persistence');
+    console.log('PASS mobile: real browser add, edit, checklist, copy, delete, reload and persistence');
   }finally{await browser.close();}
 }
 run().catch(err=>{console.error(err);process.exitCode=1}).finally(()=>close());
