@@ -1,0 +1,27 @@
+name: Natural-language schedule parser tests
+
+on:
+  pull_request:
+    paths:
+      - app.js
+      - tests/parser.test.js
+      - .github/workflows/parser-tests.yml
+  push:
+    branches:
+      - fix/natural-date-time-validation-20261030
+
+permissions:
+  contents: read
+
+jobs:
+  parser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: node --check app.js
+      - name: Run parser regression tests
+        run: node tests/parser.test.js
