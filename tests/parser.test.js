@@ -12,6 +12,18 @@ const view=new Date(2026,9,1);
 const parse=vm.runInNewContext('('+source.slice(start,end)+')',{Date,pad,iso,view});
 const cases=[
   [
+    "2026년 11월 4일 오후 7시 30 모임",
+    { "time": "19:30", "title": "모임" }
+  ],
+  [
+    "2026년 11월 4일 7시 123 모임",
+    { "error": true }
+  ],
+  [
+    "2026년 11월 4일 7시 2차 회의",
+    { "time": "07:00", "title": "2차 회의" }
+  ],
+  [
     "2026년 11월 4일 오후 7시 반 가족 모임",
     {
       "date": "2026-11-04",
