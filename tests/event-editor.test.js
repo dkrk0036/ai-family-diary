@@ -107,4 +107,23 @@ check('untimed evening appointment remains marked as time unspecified',()=>{
   const h=harness(true,initial);h.clickEvent();
   assert.equal(h.node('#pTime').textContent,'시간 미정');
 });
+check('quick add selects the new event and shows its correct details',()=>{
+  const h=harness();
+  h.node('#natural').value='2028년 2월 29일 오후 7시 가족 모임';
+  h.node('#quick').onsubmit({preventDefault(){}});
+  assert.equal(h.events().length,2);
+  assert.equal(h.node('#monthTitle').textContent,'2028년 2월');
+  assert.equal(h.node('#pTitle').textContent,'가족 모임 ♥');
+  assert.equal(h.node('#pTime').textContent,'19:00');
+  h.node('#panelEdit').onclick();
+  assert.equal(h.node('#dtitle').value,'가족 모임');
+});
+check('quick add changes selection so deleting affects only the new event',()=>{
+  const h=harness();h.clickEvent();
+  h.node('#natural').value='2028년 2월 29일 오후 7시 새 일정';
+  h.node('#quick').onsubmit({preventDefault(){}});
+  h.node('#panelDelete').onclick();
+  assert.equal(h.events().length,1);
+  assert.equal(h.events()[0].title,'기존 일정');
+});
 console.log('Event editor regression checks:',checks);
