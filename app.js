@@ -2,21 +2,29 @@ const $=s=>document.querySelector(s),grid=$('#grid'),dlg=$('#detail');const KEY=
 const pad=n=>String(n).padStart(2,'0'),iso=(y,m,d)=>y+'-'+pad(m+1)+'-'+pad(d),names={work:'어린이집',kid:'아이',me:'내 일정',spouse:'배우자/가족'};function persist(){localStorage.setItem(KEY,JSON.stringify(events))}function showPanel(e){selected=e;$('#pTitle').textContent=e.title+' ♥';const dt=new Date(e.date+'T00:00:00'),wd='일월화수목금토'[dt.getDay()];$('#pDate').textContent=dt.getFullYear()+'년 '+(dt.getMonth()+1)+'월 '+dt.getDate()+'일 ('+wd+')';$('#pTime').textContent=e.time?(e.time+(e.title.includes('저녁 약속')?' - 21:00':'')):'시간 미정';$('#pCat').textContent=names[e.cat]||'기타';$('#pPlace').textContent=e.place||'미정 (추후 확인)';$('#pMemo').textContent=e.memo||e.title;document.querySelector('.detailPanel').classList.add('open')}function draw(){const today=new Date(),todayISO=iso(today.getFullYear(),today.getMonth(),today.getDate());const n=events.filter(e=>e.date===todayISO).length;document.querySelector('.mascot b').textContent=n?'오늘 일정 '+n+'개가 있어요 ♥':'오늘 일정은 없어요 ♥';const y=view.getFullYear(),m=view.getMonth(),first=new Date(y,m,1).getDay(),last=new Date(y,m+1,0).getDate(),pl=new Date(y,m,0).getDate();$('#monthTitle').textContent=y+'년 '+(m+1)+'월';grid.innerHTML='';for(let i=0;i<42;i++){let d=i-first+1,yy=y,mm=m,other=false;if(d<1){d=pl+d;mm--;if(mm<0){mm=11;yy--}other=true}else if(d>last){d-=last;mm++;if(mm>11){mm=0;yy++}other=true}const date=iso(yy,mm,d),cell=document.createElement('div');cell.className='day'+(other?' other':'')+(date===todayISO?' current':'');cell.innerHTML='<span class="num">'+d+'</span>';events.filter(e=>e.date===date).sort((a,b)=>(a.time||'99').localeCompare(b.time||'99')).forEach(ev=>{const b=document.createElement('button');b.className='event '+ev.cat;b.textContent=(ev.time?ev.time+' ':'')+ev.title;b.onclick=()=>showPanel(ev);cell.appendChild(b)});grid.appendChild(cell)}}function openEvent(e){selected=e;$('#dtitle').value=e.title;$('#ddate').value=e.date;$('#dtime').value=e.time||'';$('#dcat').value=e.cat;$('#dplace').value=e.place||'';$('#dmemo').value=e.memo||'';dlg.showModal()}function parse(s){
   const now=new Date();
   let y=now.getFullYear(),m=now.getMonth(),d=now.getDate();
-  if(/오늘/.test(s)){}
-  else if(/내일/.test(s)){now.setDate(now.getDate()+1);y=now.getFullYear();m=now.getMonth();d=now.getDate()}
-  else{
-    const md=s.match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
-    const dd=s.match(/(\d{1,2})일/);
-    if(md){y=+(md[1]||y);m=+md[2]-1;d=+md[3]}
-    else if(dd){y=view.getFullYear();m=view.getMonth();d=+dd[1]}
+  let dateToken='';
+  if(/오늘/.test(s)){dateToken='오늘'}
+  else if(/내일/.test(s)){
+    now.setDate(now.getDate()+1);
+    y=now.getFullYear();m=now.getMonth();d=now.getDate();
+    dateToken='내일';
+  }else{
+    const md=s.match(/(?:\d{4}년\s*)?\d+월\s*\d+일/);
+    const dd=s.match(/\d+일/);
+    if(md){
+      dateToken=md[0];
+      const parts=md[0].match(/(?:(\d{4})년\s*)?(\d+)월\s*(\d+)일/);
+      y=+(parts[1]||y);m=+parts[2]-1;d=+parts[3];
+    }else if(dd){
+      dateToken=dd[0];y=view.getFullYear();m=view.getMonth();d=parseInt(dd[0],10);
+    }
   }
   const checkDate=new Date(y,m,d);
   if(checkDate.getFullYear()!==y||checkDate.getMonth()!==m||checkDate.getDate()!==d){
     return {error:'실제로 존재하는 날짜를 입력해 주세요.'};
   }
   let time='';
-  const timePattern=/(오전|오후|아침|저녁|밤|새벽)?\s*(\d{1,2})시(?:\s*(반|(\d{1,2})분))?/;
-  const tm=s.match(timePattern);
+  const tm=s.match(/(오전|오후|아침|저녁|밤|새벽)?\s*(\d+)시(?:\s*(반|(\d+)분))?/);
   if(tm){
     const period=tm[1]||'',rawHour=+tm[2],mi=tm[3]==='반'?30:+(tm[4]||0);
     if(mi>59||rawHour>23||(period&&(rawHour<1||rawHour>12))){
@@ -28,7 +36,10 @@ const pad=n=>String(n).padStart(2,'0'),iso=(y,m,d)=>y+'-'+pad(m+1)+'-'+pad(d),na
     time=pad(h)+':'+pad(mi);
   }
   const cat=/어린이집|보육|행사일지|관찰일지/.test(s)?'work':/아이|첫째|둘째|학교|학원|치과|정형외과/.test(s)?'kid':/배우자|남편|아내|가족|시댁|친정|장례/.test(s)?'spouse':'me';
-  const title=s.replace(/오늘|내일|(?:\d{4}년\s*)?\d{1,2}월\s*\d{1,2}일|\d{1,2}일|(오전|오후|아침|저녁|밤|새벽)?\s*\d{1,2}시(?:\s*(?:반|\d{1,2}분))?/g,' ').replace(/\s+/g,' ').trim();
+  let title=s;
+  if(dateToken)title=title.replace(dateToken,' ');
+  if(tm)title=title.replace(tm[0],' ');
+  title=title.replace(/\s+/g,' ').trim();
   if(!title)return {error:'일정 내용을 함께 입력해 주세요.'};
   return {date:iso(y,m,d),time,cat,title};
 }
