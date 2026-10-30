@@ -1,0 +1,27 @@
+name: Checklist persistence regression tests
+
+on:
+  pull_request:
+    paths:
+      - app.js
+      - tests/checklist.test.js
+      - .github/workflows/checklist-tests.yml
+  push:
+    branches:
+      - fix/checklist-persistence-20261031
+
+permissions:
+  contents: read
+
+jobs:
+  checklist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: node --check app.js
+      - name: Run checklist persistence regression tests
+        run: node tests/checklist.test.js
