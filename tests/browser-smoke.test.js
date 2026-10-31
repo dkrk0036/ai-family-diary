@@ -57,6 +57,29 @@ async function run(){
     assert.deepEqual(desktopErrors,[]);
     console.log('PASS desktop: real browser load, add, edit, copy, delete, reload and persistence');
 
+    // Two same-origin tabs must not silently overwrite each other's schedules.
+    const otherTab=await desktop.context().newPage();
+    await otherTab.goto(url);
+    assert.equal(await otherTab.locator('#pTitle').textContent(),'수정한 가족 모임 ♥');
+    await otherTab.locator('#panelCopy').click();
+    await desktop.waitForFunction(()=>JSON.parse(localStorage.getItem('afd-events-v3')||'[]').length===2);
+    await desktop.locator('#panelEdit').click();
+    await desktop.locator('#dtitle').fill('다른 탭 일정 보존');
+    await desktop.locator('#save').click();
+    assert.equal(await count(desktop),2,'editing from a stale tab must not erase the other tab copy');
+    assert.equal(await otherTab.locator('#pTitle').textContent(),'수정한 가족 모임 (복사) ♥');
+    otherTab.on('dialog',dialog=>dialog.accept());
+    await otherTab.locator('#panelDelete').click();
+    assert.equal(await count(desktop),1);
+    await otherTab.locator('#grid .event').first().click();
+    assert.equal(await otherTab.locator('#pTitle').textContent(),'다른 탭 일정 보존 ♥');
+    await otherTab.locator('#panelDelete').click();
+    await desktop.locator('#pTitle').waitFor({state:'visible'});
+    assert.equal(await desktop.locator('#pTitle').textContent(),'일정을 선택해 주세요');
+    assert.equal(await count(desktop),0);
+    await otherTab.close();
+    console.log('PASS two tabs: cross-tab refresh, no stale overwrite, remote deletion clears selection');
+
     const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
     const mobileErrors=[];mobile.on('pageerror',e=>mobileErrors.push(e.message));
     await reset(mobile,url);
