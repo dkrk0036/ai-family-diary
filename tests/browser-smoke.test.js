@@ -81,6 +81,24 @@ async function run(){
     await otherTab.close();
     console.log('PASS two tabs: cross-tab refresh, no stale overwrite, remote deletion clears selection');
 
+    // Verify that a relative Korean date becomes the intended calendar day in the rendered app.
+    await desktop.locator('#aiOpen').click();
+    await desktop.locator('#natural').fill('모레 오후 4시 아이 치과');
+    await desktop.locator('#quick button').click();
+    assert.equal(await desktop.locator('#pTitle').textContent(),'아이 치과 ♥');
+    assert.equal(await desktop.locator('#pTime').textContent(),'16:00');
+    const expectedRelativeDate=await desktop.evaluate(()=>{
+      const date=new Date();date.setDate(date.getDate()+2);
+      const pad=n=>String(n).padStart(2,'0');
+      return date.getFullYear()+'-'+pad(date.getMonth()+1)+'-'+pad(date.getDate());
+    });
+    const relativeEvents=await desktop.evaluate(()=>JSON.parse(localStorage.getItem('afd-events-v3')||'[]'));
+    assert.equal(relativeEvents.length,1);
+    assert.equal(relativeEvents[0].date,expectedRelativeDate);
+    await desktop.screenshot({path:path.join(root,'screenshots','relative-date-desktop.png'),fullPage:true});
+    console.log('PASS relative date: 모레 resolves to the correct day and is visible in the calendar');
+
+
     const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
     const mobileErrors=[];mobile.on('pageerror',e=>mobileErrors.push(e.message));
     await reset(mobile,url);
