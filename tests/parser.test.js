@@ -9,8 +9,22 @@ assert(start>=0&&end>start,'Could not locate parse()');
 const pad=n=>String(n).padStart(2,'0');
 const iso=(y,m,d)=>y+'-'+pad(m+1)+'-'+pad(d);
 const view=new Date(2026,9,1);
-const parse=vm.runInNewContext('('+source.slice(start,end)+')',{Date,pad,iso,view});
+// Freeze the reference date so relative-date cases behave the same in CI and locally.
+class FixedDate extends Date {
+  constructor(...args){super(...(args.length?args:[2026,9,31,12,0,0]))}
+}
+const parse=vm.runInNewContext('('+source.slice(start,end)+')',{Date:FixedDate,pad,iso,view});
 const cases=[
+  ["모레 오후 4시 아이 치과",{"date":"2026-11-02","time":"16:00","title":"아이 치과","cat":"kid"}],
+  ["글피 오전 9시 모임",{"date":"2026-11-03","time":"09:00","title":"모임"}],
+  ["이번 주 금요일 오후 6시 장보기",{"date":"2026-10-30","time":"18:00","title":"장보기"}],
+  ["다음주 월요일 오후 3시 회의",{"date":"2026-11-02","time":"15:00","title":"회의"}],
+  ["다음 주 일요일 가족 모임",{"date":"2026-11-08","title":"가족 모임"}],
+  ["다음 달 5일 19시 가족 모임",{"date":"2026-11-05","time":"19:00","title":"가족 모임"}],
+  ["이번달 3일 장보기",{"date":"2026-10-03","title":"장보기"}],
+  ["다음주 회의",{"error":true}],
+  ["다음 달 가족 모임",{"error":true}],
+  ["이번주 회의",{"error":true}],
   [
     "2026년 11월 4일 19:30 모임",
     { "time": "19:30", "title": "모임" }
