@@ -17,7 +17,49 @@ function validateEventEdit(input){
 }const checklistBoxes=[...document.querySelectorAll('.detailPanel .check input[type="checkbox"]')];
 function renderChecklist(e){const flags=Array.isArray(e.checklist)?e.checklist:[];checklistBoxes.forEach((box,i)=>{box.checked=flags[i]===true})}
 checklistBoxes.forEach((box,i)=>box.addEventListener('change',()=>{if(!selected)return;const flags=Array.isArray(selected.checklist)?[...selected.checklist]:[];flags[i]=box.checked;selected.checklist=flags;persist()}));
-function showPanel(e){selected=e;renderChecklist(e);$('#pTitle').textContent=e.title+' ♥';const dt=new Date(e.date+'T00:00:00'),wd='일월화수목금토'[dt.getDay()];$('#pDate').textContent=dt.getFullYear()+'년 '+(dt.getMonth()+1)+'월 '+dt.getDate()+'일 ('+wd+')';$('#pTime').textContent=e.time||'시간 미정';$('#pCat').textContent=names[e.cat]||'기타';$('#pPlace').textContent=e.place||'미정 (추후 확인)';$('#pMemo').textContent=e.memo||e.title;document.querySelector('.detailPanel').classList.add('open')}function draw(){const today=new Date(),todayISO=iso(today.getFullYear(),today.getMonth(),today.getDate());const n=events.filter(e=>e.date===todayISO).length;document.querySelector('.mascot b').textContent=n?'오늘 일정 '+n+'개가 있어요 ♥':'오늘 일정은 없어요 ♥';const y=view.getFullYear(),m=view.getMonth(),first=new Date(y,m,1).getDay(),last=new Date(y,m+1,0).getDate(),pl=new Date(y,m,0).getDate();$('#monthTitle').textContent=y+'년 '+(m+1)+'월';grid.innerHTML='';for(let i=0;i<42;i++){let d=i-first+1,yy=y,mm=m,other=false;if(d<1){d=pl+d;mm--;if(mm<0){mm=11;yy--}other=true}else if(d>last){d-=last;mm++;if(mm>11){mm=0;yy++}other=true}const date=iso(yy,mm,d),cell=document.createElement('div');cell.className='day'+(other?' other':'')+(date===todayISO?' current':'');cell.innerHTML='<span class="num">'+d+'</span>';events.filter(e=>e.date===date).sort((a,b)=>(a.time||'99').localeCompare(b.time||'99')).forEach(ev=>{const b=document.createElement('button');b.className='event '+ev.cat;b.textContent=(ev.time?ev.time+' ':'')+ev.title;b.onclick=()=>showPanel(ev);cell.appendChild(b)});grid.appendChild(cell)}}function openEvent(e){selected=e;$('#dtitle').value=e.title;$('#ddate').value=e.date;$('#dtime').value=e.time||'';$('#dcat').value=e.cat;$('#dplace').value=e.place||'';$('#dmemo').value=e.memo||'';dlg.showModal()}function parse(s){
+function showPanel(e){selected=e;renderChecklist(e);$('#pTitle').textContent=e.title+' ♥';const dt=new Date(e.date+'T00:00:00'),wd='일월화수목금토'[dt.getDay()];$('#pDate').textContent=dt.getFullYear()+'년 '+(dt.getMonth()+1)+'월 '+dt.getDate()+'일 ('+wd+')';$('#pTime').textContent=e.time||'시간 미정';$('#pCat').textContent=names[e.cat]||'기타';$('#pPlace').textContent=e.place||'미정 (추후 확인)';$('#pMemo').textContent=e.memo||e.title;document.querySelector('.detailPanel').classList.add('open')}function draw(){const today=new Date(),todayISO=iso(today.getFullYear(),today.getMonth(),today.getDate());const n=events.filter(e=>e.date===todayISO).length;document.querySelector('.mascot b').textContent=n?'오늘 일정 '+n+'개가 있어요 ♥':'오늘 일정은 없어요 ♥';const y=view.getFullYear(),m=view.getMonth(),first=new Date(y,m,1).getDay(),last=new Date(y,m+1,0).getDate(),pl=new Date(y,m,0).getDate();$('#monthTitle').textContent=y+'년 '+(m+1)+'월';grid.innerHTML='';for(let i=0;i<42;i++){let d=i-first+1,yy=y,mm=m,other=false;if(d<1){d=pl+d;mm--;if(mm<0){mm=11;yy--}other=true}else if(d>last){d-=last;mm++;if(mm>11){mm=0;yy++}other=true}const date=iso(yy,mm,d),cell=document.createElement('div');cell.className='day'+(other?' other':'')+(date===todayISO?' current':'');cell.innerHTML='<span class="num">'+d+'</span>';events.filter(e=>e.date===date).sort((a,b)=>(a.time||'99').localeCompare(b.time||'99')).forEach(ev=>{const b=document.createElement('button');b.className='event '+ev.cat;b.textContent=(ev.time?ev.time+' ':'')+ev.title;b.onclick=()=>showPanel(ev);cell.appendChild(b)});grid.appendChild(cell)}}function openEvent(e){selected=e;$('#dtitle').value=e.title;$('#ddate').value=e.date;$('#dtime').value=e.time||'';$('#dcat').value=e.cat;$('#dplace').value=e.place||'';$('#dmemo').value=e.memo||'';dlg.showModal()}// Keep tabs on the same browser and origin in sync without claiming cross-device sync.
+function syncOtherTab(event){
+  if(event.key!==KEY&&event.key!==null)return;
+  let incoming;
+  try{
+    const raw=localStorage.getItem(KEY);
+    incoming=raw?JSON.parse(raw):[];
+    if(!Array.isArray(incoming)||incoming.some(e=>!e||typeof e.date!=='string'||typeof e.title!=='string'))return;
+  }catch(err){console.warn('다른 탭 일정 읽기 실패',err);return}
+  const previous=selected;
+  const panel=document.querySelector('.detailPanel');
+  const panelWasOpen=panel.classList.contains('open');
+  events=incoming;
+  draw();
+  if(previous){
+    const matches=events.filter(e=>String(e.id)===String(previous.id));
+    let current=matches.length===1?matches[0]:null;
+    if(matches.length>1){
+      const exact=matches.filter(e=>e.date===previous.date&&e.title===previous.title&&e.time===previous.time);
+      if(exact.length===1)current=exact[0];
+    }
+    if(current){
+      showPanel(current);
+      if(!panelWasOpen)panel.classList.remove('open');
+    }else{
+      selected=null;
+      panel.classList.remove('open');
+      $('#pTitle').textContent='일정을 선택해 주세요';
+      $('#pDate').textContent='날짜 미정';
+      $('#pTime').textContent='시간 미정';
+      $('#pCat').textContent='-';
+      $('#pPlace').textContent='-';
+      $('#pMemo').textContent='달력에서 일정을 선택하면 자세한 내용이 표시돼요.';
+      checklistBoxes.forEach(box=>{box.checked=false});
+    }
+  }
+  if(dlg.open){
+    dlg.close();
+    alert('다른 탭에서 일정이 변경되어 수정 창을 닫았어요. 다시 열어 확인해 주세요.');
+  }
+}
+if(typeof addEventListener==='function')addEventListener('storage',syncOtherTab);
+function parse(s){
   const now=new Date();
   let y=now.getFullYear(),m=now.getMonth(),d=now.getDate();
   let dateToken='';
@@ -61,46 +103,4 @@ function showPanel(e){selected=e;renderChecklist(e);$('#pTitle').textContent=e.t
   if(!title)return {error:'일정 내용을 함께 입력해 주세요.'};
   return {date:iso(y,m,d),time,cat,title};
 }
-// Keep tabs on the same browser and origin in sync without claiming cross-device sync.
-function syncOtherTab(event){
-  if(event.key!==KEY&&event.key!==null)return;
-  let incoming;
-  try{
-    const raw=localStorage.getItem(KEY);
-    incoming=raw?JSON.parse(raw):[];
-    if(!Array.isArray(incoming)||incoming.some(e=>!e||typeof e.date!=='string'||typeof e.title!=='string'))return;
-  }catch(err){console.warn('다른 탭 일정 읽기 실패',err);return}
-  const previous=selected;
-  const panel=document.querySelector('.detailPanel');
-  const panelWasOpen=panel.classList.contains('open');
-  events=incoming;
-  draw();
-  if(previous){
-    const matches=events.filter(e=>String(e.id)===String(previous.id));
-    let current=matches.length===1?matches[0]:null;
-    if(matches.length>1){
-      const exact=matches.filter(e=>e.date===previous.date&&e.title===previous.title&&e.time===previous.time);
-      if(exact.length===1)current=exact[0];
-    }
-    if(current){
-      showPanel(current);
-      if(!panelWasOpen)panel.classList.remove('open');
-    }else{
-      selected=null;
-      panel.classList.remove('open');
-      $('#pTitle').textContent='일정을 선택해 주세요';
-      $('#pDate').textContent='날짜 미정';
-      $('#pTime').textContent='시간 미정';
-      $('#pCat').textContent='-';
-      $('#pPlace').textContent='-';
-      $('#pMemo').textContent='달력에서 일정을 선택하면 자세한 내용이 표시돼요.';
-      checklistBoxes.forEach(box=>{box.checked=false});
-    }
-  }
-  if(dlg.open){
-    dlg.close();
-    alert('다른 탭에서 일정이 변경되어 수정 창을 닫았어요. 다시 열어 확인해 주세요.');
-  }
-}
-if(typeof addEventListener==='function')addEventListener('storage',syncOtherTab);
 $('#mobileAdd').onclick=()=>$('#aiDialog').showModal();$('#quick').onsubmit=e=>{e.preventDefault();const s=$('#natural').value.trim();if(!s)return;const p=parse(s);if(p.error){alert(p.error);return}const created={id:nextEventId(),...p,place:'',memo:''};events.push(created);persist();view=new Date(p.date+'T00:00:00');view.setDate(1);draw();$('#natural').value='';$('#aiDialog').close();showPanel(created)};$('#prev').onclick=()=>{view.setMonth(view.getMonth()-1);draw()};$('#next').onclick=()=>{view.setMonth(view.getMonth()+1);draw()};$('#today').onclick=()=>{view=new Date();view.setDate(1);draw()};$('#panelClose').onclick=()=>document.querySelector('.detailPanel').classList.remove('open');const edit=()=>selected&&openEvent(selected);$('#editBtn').onclick=edit;$('#panelEdit').onclick=edit;function del(){if(selected&&confirm('이 일정을 삭제할까요?')){events=events.filter(e=>e!==selected);persist();draw();document.querySelector('.detailPanel').classList.remove('open');if(dlg.open)dlg.close();selected=null;$('#pTitle').textContent='일정을 선택해 주세요';$('#pDate').textContent='날짜 미정';$('#pTime').textContent='시간 미정';$('#pCat').textContent='-';$('#pPlace').textContent='-';$('#pMemo').textContent='달력에서 일정을 선택하면 자세한 내용이 표시돼요.';checklistBoxes.forEach(box=>{box.checked=false})}}function copy(){if(selected){const copied={...selected,id:nextEventId(),checklist:Array.isArray(selected.checklist)?[...selected.checklist]:[],title:selected.title+' (복사)'};events.push(copied);persist();view=new Date(copied.date+'T00:00:00');view.setDate(1);draw();showPanel(copied);if(dlg.open)dlg.close()}}$('#panelDelete').onclick=del;$('#delete').onclick=del;$('#panelCopy').onclick=copy;$('#copy').onclick=copy;$('#close').onclick=()=>dlg.close();$('#save').onclick=()=>{if(!selected)return;const result=validateEventEdit({title:$('#dtitle').value,date:$('#ddate').value,time:$('#dtime').value,cat:$('#dcat').value,place:$('#dplace').value,memo:$('#dmemo').value});if(result.error){alert(result.error);return}Object.assign(selected,result);persist();view=new Date(result.date+'T00:00:00');view.setDate(1);draw();showPanel(selected);dlg.close()};draw();const first=events.find(e=>e.date===iso(new Date().getFullYear(),new Date().getMonth(),new Date().getDate()))||events[0];if(first&&innerWidth>720)showPanel(first);
