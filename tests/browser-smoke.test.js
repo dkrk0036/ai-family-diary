@@ -31,7 +31,8 @@ async function run(){
   const browser=await chromium.launch({headless:true});
   fs.mkdirSync(path.join(root,'screenshots'),{recursive:true});
   try{
-    const desktop=await browser.newPage({viewport:{width:1440,height:900}});
+    const desktopContext=await browser.newContext({viewport:{width:1440,height:900}});
+    const desktop=await desktopContext.newPage();
     const desktopErrors=[];desktop.on('pageerror',e=>desktopErrors.push(e.message));
     await reset(desktop,url);
     assert.match(await desktop.locator('#monthTitle').textContent(),/^\d{4}년 \d{1,2}월$/);
