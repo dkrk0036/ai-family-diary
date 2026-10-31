@@ -63,11 +63,34 @@ function parse(s){
   const now=new Date();
   let y=now.getFullYear(),m=now.getMonth(),d=now.getDate();
   let dateToken='';
-  if(/오늘/.test(s)){dateToken='오늘'}
+  const week=s.match(/(이번|다음)\s*주\s*([월화수목금토일])요일/);
+  const month=s.match(/(이번|다음)\s*달\s*(\d{1,2})일/);
+  if(week){
+    dateToken=week[0];
+    const monday=(now.getDay()+6)%7;
+    const weekday='월화수목금토일'.indexOf(week[2]);
+    now.setDate(now.getDate()-monday+(week[1]==='다음'?7:0)+weekday);
+    y=now.getFullYear();m=now.getMonth();d=now.getDate();
+  }else if(month){
+    dateToken=month[0];
+    now.setDate(1);
+    now.setMonth(now.getMonth()+(month[1]==='다음'?1:0));
+    y=now.getFullYear();m=now.getMonth();d=+month[2];
+  }else if(/모레/.test(s)){
+    dateToken='모레';
+    now.setDate(now.getDate()+2);
+    y=now.getFullYear();m=now.getMonth();d=now.getDate();
+  }else if(/글피/.test(s)){
+    dateToken='글피';
+    now.setDate(now.getDate()+3);
+    y=now.getFullYear();m=now.getMonth();d=now.getDate();
+  }else if(/오늘/.test(s)){dateToken='오늘'}
   else if(/내일/.test(s)){
     now.setDate(now.getDate()+1);
     y=now.getFullYear();m=now.getMonth();d=now.getDate();
     dateToken='내일';
+  }else if(/(?:이번|다음)\s*(?:주|달)/.test(s)){
+    return {error:'이번 주/다음 주는 요일을, 이번 달/다음 달은 날짜를 함께 입력해 주세요.'};
   }else{
     const md=s.match(/(?:\d{4}년\s*)?\d+월\s*\d+일/);
     const dd=s.match(/\d+일/);
